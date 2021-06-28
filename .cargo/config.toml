@@ -1,0 +1,9 @@
+[unstable]
+build-std = ["core"]
+build-std-features = ["compiler-builtins-mem"]
+
+[build]
+target = "./spec/x86_64-lateral.json"
+
+[target.'cfg(target_os = "none")']
+runner = "bootimage runner"
