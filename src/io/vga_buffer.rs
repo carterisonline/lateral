@@ -1,4 +1,4 @@
-use core::fmt::{self, Display};
+use core::fmt::{self, Display, Write};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
@@ -179,6 +179,7 @@ macro_rules! println {
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
-    use core::fmt::Write;
-    WRITER.lock().write_fmt(args).unwrap();
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }

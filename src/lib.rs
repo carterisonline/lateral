@@ -33,6 +33,8 @@ mod tests {
 }
 
 pub fn init() {
-    cpu::interrupt::init_idt();
     cpu::gdt::init();
+    cpu::interrupt::init_idt();
+    unsafe { cpu::interrupt::PICS.lock().initialize() };
+    x86_64::instructions::interrupts::enable();
 }

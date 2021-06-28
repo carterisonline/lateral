@@ -11,7 +11,7 @@ bootloader::entry_point!(tests::main);
 
 #[cfg(not(test))]
 mod kernel {
-    use lateral::println;
+    use lateral::{print, println};
 
     pub fn main(_: &'static bootloader::BootInfo) -> ! {
         lateral::init();
