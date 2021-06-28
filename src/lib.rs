@@ -8,6 +8,7 @@
 
 pub mod cpu;
 pub mod io;
+pub mod mem;
 pub mod test;
 pub mod util;
 
@@ -22,6 +23,7 @@ bootloader::entry_point!(tests::main);
 #[cfg(test)]
 mod tests {
     pub fn main(_: &'static bootloader::BootInfo) -> ! {
+        super::init();
         super::test_harness();
         super::halt_loop();
     }
