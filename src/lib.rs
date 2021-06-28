@@ -5,7 +5,12 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test::runner)]
 #![reexport_test_harness_main = "test_harness"]
+#![feature(alloc_error_handler)]
+#![feature(const_mut_refs)]
 
+extern crate alloc as rust_alloc;
+
+pub mod alloc;
 pub mod cpu;
 pub mod io;
 pub mod mem;
@@ -39,4 +44,9 @@ pub fn init() {
     cpu::interrupt::init_idt();
     unsafe { cpu::interrupt::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
+}
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: rust_alloc::alloc::Layout) -> ! {
+    panic!("allocation error: {:?}", layout)
 }

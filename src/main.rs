@@ -11,9 +11,11 @@ bootloader::entry_point!(tests::main);
 
 #[cfg(not(test))]
 mod kernel {
+    extern crate alloc as rust_alloc;
     use lateral::mem::frame::BootInfoFrameAllocator;
     use lateral::mem::paging;
     use lateral::println;
+    use rust_alloc::boxed::Box;
     use x86_64::structures::paging::Page;
     use x86_64::VirtAddr;
 
@@ -31,6 +33,12 @@ mod kernel {
         // write the string `New!` to the screen through the new mapping
         let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
         unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) };
+
+        lateral::alloc::heap::init_heap(&mut mapper, &mut frame_allocator)
+            .expect("heap initialization failed");
+
+        let x = Box::new(100);
+        println!("{}", x);
 
         println!("Hello World!");
         lateral::halt_loop();
