@@ -14,6 +14,8 @@ mod kernel {
     use lateral::println;
 
     pub fn main(_: &'static bootloader::BootInfo) -> ! {
+        lateral::init();
+
         println!("Hello World!");
         lateral::halt_loop();
     }

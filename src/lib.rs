@@ -6,6 +6,7 @@
 #![test_runner(crate::test::runner)]
 #![reexport_test_harness_main = "test_harness"]
 
+pub mod cpu;
 pub mod io;
 pub mod test;
 pub mod util;
@@ -29,4 +30,9 @@ mod tests {
     fn panic(info: &core::panic::PanicInfo) -> ! {
         super::test::panic(info)
     }
+}
+
+pub fn init() {
+    cpu::interrupt::init_idt();
+    cpu::gdt::init();
 }

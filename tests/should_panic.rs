@@ -4,7 +4,9 @@
 // Entry point.
 bootloader::entry_point!(main);
 fn main(_: &'static bootloader::BootInfo) -> ! {
+    lateral::init();
     lateral::test::run_should_panic(&tests::basic);
+    lateral::test::run(&tests::test_breakpoint_exception);
     loop {}
 }
 
@@ -18,5 +20,9 @@ mod tests {
     pub fn basic() {
         let actual = 1;
         assert_eq!(0, actual);
+    }
+
+    pub fn test_breakpoint_exception() {
+        x86_64::instructions::interrupts::int3();
     }
 }
