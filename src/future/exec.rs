@@ -2,6 +2,8 @@ extern crate alloc as rust_alloc;
 
 use core::task::{Context, Poll, Waker};
 
+use crate::TASK_CACHE;
+
 use super::task::{Task, TaskId};
 use crossbeam_queue::ArrayQueue;
 use rust_alloc::collections::BTreeMap;
@@ -63,6 +65,7 @@ impl Executor {
     pub fn run(&mut self) -> ! {
         loop {
             self.run_ready_tasks();
+            self.sync_task_buffer();
             self.sleep_if_idle();
         }
     }
@@ -73,6 +76,14 @@ impl Executor {
             enable_and_hlt();
         } else {
             interrupts::enable();
+        }
+    }
+
+    fn sync_task_buffer(&mut self) {
+        unsafe {
+            while !TASK_CACHE.is_empty() {
+                self.spawn(TASK_CACHE.pop().unwrap())
+            }
         }
     }
 }

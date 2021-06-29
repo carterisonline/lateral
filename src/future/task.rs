@@ -4,6 +4,31 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use core::task::{Context, Poll};
 use core::{future::Future, pin::Pin};
 use rust_alloc::boxed::Box;
+use rust_alloc::vec::Vec;
+
+pub struct TaskCache {
+    contents: Vec<Task>,
+}
+
+impl TaskCache {
+    pub const fn new() -> TaskCache {
+        TaskCache {
+            contents: Vec::new(),
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<Task> {
+        self.contents.pop()
+    }
+
+    pub fn push(&mut self, task: Task) {
+        self.contents.push(task);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.contents.len() == 0
+    }
+}
 
 pub struct Task {
     pub(super) id: TaskId,
@@ -23,7 +48,7 @@ impl Task {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) struct TaskId(u64);
+pub struct TaskId(u64);
 impl TaskId {
     fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);

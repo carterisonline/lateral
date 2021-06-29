@@ -17,7 +17,7 @@ mod kernel {
     use lateral::future::task::Task;
     use lateral::mem::frame::BootInfoFrameAllocator;
     use lateral::mem::paging;
-    use lateral::println;
+    use lateral::{println, TASK_CACHE};
     use x86_64::VirtAddr;
 
     pub fn main(boot_info: &'static bootloader::BootInfo) -> ! {
@@ -32,6 +32,15 @@ mod kernel {
 
         let mut executor = Executor::new();
         executor.spawn(Task::new(ps2::print_keypresses()));
+        executor.spawn(Task::new(async {
+            for i in 0..100 {
+                unsafe {
+                    TASK_CACHE.push(Task::new(async move {
+                        println!("{} ", i);
+                    }))
+                }
+            }
+        }));
         executor.run();
 
         println!("Hello World!");

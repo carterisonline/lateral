@@ -8,6 +8,9 @@
 #![feature(alloc_error_handler)]
 #![feature(const_mut_refs)]
 
+
+use future::task::TaskCache;
+
 extern crate alloc as rust_alloc;
 
 pub mod alloc;
@@ -23,6 +26,8 @@ pub fn halt_loop() -> ! {
         x86_64::instructions::hlt();
     }
 }
+
+pub static mut TASK_CACHE: TaskCache = TaskCache::new();
 
 #[cfg(test)]
 bootloader::entry_point!(tests::main);
