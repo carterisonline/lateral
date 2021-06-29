@@ -12,6 +12,7 @@ extern crate alloc as rust_alloc;
 
 pub mod alloc;
 pub mod cpu;
+pub mod future;
 pub mod io;
 pub mod mem;
 pub mod test;
