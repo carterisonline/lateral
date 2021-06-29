@@ -12,11 +12,12 @@ bootloader::entry_point!(tests::main);
 #[cfg(not(test))]
 mod kernel {
     extern crate alloc as rust_alloc;
+    use lateral::future::exec::Executor;
+    use lateral::future::io::ps2;
+    use lateral::future::task::Task;
     use lateral::mem::frame::BootInfoFrameAllocator;
     use lateral::mem::paging;
     use lateral::println;
-    use rust_alloc::boxed::Box;
-    use x86_64::structures::paging::Page;
     use x86_64::VirtAddr;
 
     pub fn main(boot_info: &'static bootloader::BootInfo) -> ! {
@@ -26,19 +27,12 @@ mod kernel {
         let mut mapper = unsafe { paging::init(phys_mem_offset) };
         let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
 
-        // map an unused page
-        let page = Page::containing_address(VirtAddr::new(0));
-        paging::create_example_mapping(page, &mut mapper, &mut frame_allocator);
-
-        // write the string `New!` to the screen through the new mapping
-        let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-        unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) };
-
         lateral::alloc::heap::init_heap(&mut mapper, &mut frame_allocator)
             .expect("heap initialization failed");
 
-        let x = Box::new(100);
-        println!("{}", x);
+        let mut executor = Executor::new();
+        executor.spawn(Task::new(ps2::print_keypresses()));
+        executor.run();
 
         println!("Hello World!");
         lateral::halt_loop();
