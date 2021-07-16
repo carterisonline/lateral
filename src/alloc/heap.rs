@@ -2,7 +2,7 @@ use crate::alloc::global::ALLOCATOR;
 
 const KIB: usize = 0x400;
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 100 * KIB;
+pub const HEAP_SIZE: usize = 10_000 * KIB;
 
 use x86_64::{
     structures::paging::{

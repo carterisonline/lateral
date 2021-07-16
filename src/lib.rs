@@ -2,32 +2,76 @@
 #![cfg_attr(test, no_main)]
 #![feature(abi_x86_interrupt)]
 #![feature(asm)]
+#![feature(llvm_asm)] // Should remove in favor of asm
+#![feature(naked_functions)]
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test::runner)]
 #![reexport_test_harness_main = "test_harness"]
 #![feature(alloc_error_handler)]
 #![feature(const_mut_refs)]
+#![feature(const_fn_fn_ptr_basics)]
 
-
-use future::task::TaskCache;
+use thread::queue::ThreadQueue;
 
 extern crate alloc as rust_alloc;
 
 pub mod alloc;
 pub mod cpu;
-pub mod future;
 pub mod io;
 pub mod mem;
 pub mod test;
+pub mod thread;
 pub mod util;
+
+pub static mut THREAD_QUEUE: ThreadQueue = ThreadQueue::new();
+
+pub fn spawn_thread(thread: fn()) {
+    unsafe {
+        THREAD_QUEUE.push(thread);
+    }
+}
+
+#[macro_export]
+macro_rules! inner {
+    ($x: block) => {
+        rust_alloc::boxed::Box::pin(async move { $x })
+    };
+}
+
+#[macro_export]
+macro_rules! task {
+    ($x: block) => {
+        Task::new(None, async { $x })
+    };
+
+    ($id: expr, $x: block) => {
+        Task::new(Some(*$id), async { $x })
+    };
+}
+
+#[macro_export]
+macro_rules! exit {
+    ($id: expr, $code: literal) => {
+        $crate::future::task::RETURN_CODES
+            .lock()
+            .insert($id.clone(), $code);
+    };
+}
+
+#[macro_export]
+macro_rules! assign_pid {
+    ($var: ident) => {
+        lazy_static! {
+            static ref $var: $crate::future::task::TaskId = $crate::future::task::TaskId::new();
+        }
+    };
+}
 
 pub fn halt_loop() -> ! {
     loop {
         x86_64::instructions::hlt();
     }
 }
-
-pub static mut TASK_CACHE: TaskCache = TaskCache::new();
 
 #[cfg(test)]
 bootloader::entry_point!(tests::main);
