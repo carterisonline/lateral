@@ -1,9 +1,9 @@
 use crate::cpu::gdt;
 use crate::halt_loop;
-use crate::print;
-use crate::println;
+use crate::io::logging::kernel_error;
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
+use rust_alloc::format;
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
@@ -52,7 +52,7 @@ pub fn init_idt() {
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    kernel_error(format!("BREAKPOINT\n{:#?}", stack_frame).as_str());
 }
 
 extern "x86-interrupt" fn double_fault_handler(
@@ -63,8 +63,7 @@ extern "x86-interrupt" fn double_fault_handler(
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    print!(".");
-
+    // Re-poll processes
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
@@ -76,7 +75,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
 
     let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
-    crate::future::io::ps2::add_scancode(scancode);
+    crate::thread::ps2::add_scancode(scancode);
 
     unsafe {
         PICS.lock()
@@ -90,9 +89,9 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("EXCEPTION: PAGE FAULT");
-    println!("Accessed Address: {:?}", Cr2::read());
-    println!("Error Code: {:?}", error_code);
-    println!("{:#?}", stack_frame);
+    kernel_error("PAGE FAULT");
+    kernel_error(format!("Accessed Address: {:?}", Cr2::read()).as_str());
+    kernel_error(format!("Error Code: {:?}", error_code).as_str());
+    kernel_error(format!("{:#?}", stack_frame).as_str());
     halt_loop();
 }
