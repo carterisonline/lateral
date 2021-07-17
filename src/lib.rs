@@ -19,8 +19,10 @@ pub mod alloc;
 pub mod cpu;
 pub mod io;
 pub mod mem;
+pub mod syscall;
 pub mod test;
 pub mod thread;
+pub mod time;
 pub mod util;
 
 pub static mut THREAD_QUEUE: ThreadQueue = ThreadQueue::new();
