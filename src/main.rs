@@ -13,12 +13,12 @@ bootloader::entry_point!(tests::main);
 #[cfg(not(test))]
 mod kernel {
     extern crate alloc as rust_alloc;
+    use lateral::gui::terminal;
     use lateral::io::logging::kernel_fatal;
     use lateral::mem::frame::BootInfoFrameAllocator;
     use lateral::mem::paging;
     use lateral::thread::ps2::init_ps2;
-    use lateral::thread::{yield_thread, Runtime};
-    use lateral::{println, spawn_thread};
+    use lateral::thread::Runtime;
     use rust_alloc::format;
     use x86_64::VirtAddr;
 
@@ -37,28 +37,7 @@ mod kernel {
         let mut runtime = Runtime::new();
 
         runtime.init();
-        runtime.spawn(|| {
-            println!("THREAD 1 STARTING");
-            spawn_thread(|| {
-                println!("THREAD 3 STARTING FROM THREAD 1...");
-                for _ in 0..1_000_000 {
-                    yield_thread();
-                }
-                println!("THREAD 3 FINISHED");
-            });
-            for _ in 0..30_000 {
-                yield_thread();
-            }
-
-            println!("THREAD 1 FINISHED");
-        });
-        runtime.spawn(|| {
-            println!("THREAD 2 STARTING");
-            for _ in 0..15_000 {
-                yield_thread();
-            }
-            println!("THREAD 2 FINISHED");
-        });
+        runtime.spawn(terminal);
         runtime.run();
     }
 
