@@ -1,8 +1,10 @@
+use micromath::F32Ext;
 use rust_alloc::boxed::Box;
 use rust_alloc::string::{String, ToString};
 use rust_alloc::vec::Vec;
 
 use crate::io::vga_buffer::{BgColor, ColorCode, FgColor, ScreenChar, HEIGHT, WIDTH, WRITER};
+use crate::println;
 
 use super::lgtk::widgets::Widget;
 use super::lgtk::Size;
@@ -33,29 +35,34 @@ fn gradient_wallpaper() -> VGABuffer {
     buffer
 }
 
-fn window_with_borders(x: usize, y: usize, width: usize, height: usize) -> ScreenChar {
+fn window_with_borders(
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+    focused: bool,
+) -> Option<ScreenChar> {
     if y == height || x == width {
-        if y == 0 {
-            ScreenChar {
-                ascii_character: b' ',
-                color_code: ColorCode::new(FgColor::White, DESKTOP_BG),
-            }
-        } else if x == 0 {
-            ScreenChar {
-                ascii_character: b' ',
-                color_code: ColorCode::new(FgColor::White, BgColor::LightBlue),
-            }
+        if y == 0 || x == 0 {
+            None
         } else {
-            ScreenChar {
+            Some(ScreenChar {
                 ascii_character: 219,
                 color_code: ColorCode::new(FgColor::Black, DESKTOP_BG),
-            }
+            })
         }
     } else {
-        ScreenChar {
+        Some(ScreenChar {
             ascii_character: b' ',
-            color_code: ColorCode::new(FgColor::White, BgColor::LightGray),
-        }
+            color_code: ColorCode::new(
+                FgColor::White,
+                if focused {
+                    BgColor::LightGray
+                } else {
+                    BgColor::DarkGray
+                },
+            ),
+        })
     }
 }
 
@@ -78,7 +85,7 @@ impl SizedWidget<'a> {
 }
 
 pub struct Window<'a> {
-    contents: Vec<Vec<ScreenChar>>,
+    contents: Vec<Vec<Option<ScreenChar>>>,
     name: String,
     x_pos: usize,
     y_pos: usize,
@@ -86,6 +93,7 @@ pub struct Window<'a> {
     height: usize,
     widgets: Vec<SizedWidget<'a>>,
     widget_height: usize,
+    is_focused: bool,
 }
 
 impl Window<'a> {
@@ -95,10 +103,10 @@ impl Window<'a> {
             contents: (0..=height)
                 .map(|y| {
                     (0..=width)
-                        .map(|x| window_with_borders(x, y, width, height))
-                        .collect::<Vec<ScreenChar>>()
+                        .map(|x| window_with_borders(x, y, width, height, false))
+                        .collect::<Vec<Option<ScreenChar>>>()
                 })
-                .collect::<Vec<Vec<ScreenChar>>>(),
+                .collect::<Vec<Vec<Option<ScreenChar>>>>(),
             width,
             height,
             name: name.to_string(),
@@ -106,6 +114,7 @@ impl Window<'a> {
             y_pos: HEIGHT / 2 - (height / 2),
             widgets: Vec::new(),
             widget_height: 0,
+            is_focused: false,
         }
     }
 
@@ -140,10 +149,10 @@ impl Window<'a> {
                 self.set_char(
                     x_pos,
                     y_pos,
-                    ScreenChar {
+                    Some(ScreenChar {
                         ascii_character: c as u8,
                         color_code: ColorCode::new(FgColor::Black, BgColor::LightGray),
-                    },
+                    }),
                 );
 
                 x_pos += 1;
@@ -152,17 +161,17 @@ impl Window<'a> {
             self.set_char(
                 x_pos,
                 y_pos,
-                ScreenChar {
+                Some(ScreenChar {
                     ascii_character: b' ',
                     color_code: ColorCode::new(FgColor::Black, BgColor::LightGray),
-                },
+                }),
             );
 
             x_pos += 1;
         }
     }
 
-    pub fn set_char(&mut self, x: usize, y: usize, c: ScreenChar) {
+    pub fn set_char(&mut self, x: usize, y: usize, c: Option<ScreenChar>) {
         self.contents[y][x] = c;
     }
 
@@ -183,7 +192,10 @@ impl Window<'a> {
                     break;
                 }
 
-                vga_buffer[y][x] = self.contents[y - self.y_pos][x - self.x_pos];
+                let target = self.contents[y - self.y_pos][x - self.x_pos];
+                if let Some(ch) = target {
+                    vga_buffer[y][x] = ch;
+                }
             }
         }
     }
@@ -196,18 +208,40 @@ impl Window<'a> {
     fn draw_widget(&mut self, wnum: usize) {
         let w = &self.widgets[wnum];
         let padding = w.widget.get_padding();
-        for (y, row) in w.widget.to_buffer(w.size - padding).iter().enumerate() {
+        for (y, row) in w
+            .widget
+            .to_buffer(
+                w.size - padding,
+                if self.is_focused {
+                    BgColor::LightGray
+                } else {
+                    BgColor::DarkGray
+                },
+            )
+            .iter()
+            .enumerate()
+        {
             for (x, c) in row.iter().enumerate() {
-                self.contents[y + w.y_pos + padding.height][x + padding.width] = c.clone();
+                self.contents[y + w.y_pos + padding.height][x + padding.width] = Some(c.clone());
             }
         }
+    }
+
+    pub fn redraw_frame(&mut self) {
+        self.contents = (0..=self.height)
+            .map(|y| {
+                (0..=self.width)
+                    .map(|x| window_with_borders(x, y, self.width, self.height, self.is_focused))
+                    .collect::<Vec<Option<ScreenChar>>>()
+            })
+            .collect::<Vec<Vec<Option<ScreenChar>>>>();
     }
 }
 
 pub struct Desktop<'a> {
     buffer: VGABuffer,
     windows: Vec<Window<'a>>,
-    active_window: Option<usize>,
+    pub active_window: Option<usize>,
 }
 
 impl Desktop<'a> {
@@ -244,6 +278,9 @@ impl Desktop<'a> {
     }
 
     pub fn focus(&mut self, window_num: usize) {
+        if self.active_window.is_some() {
+            self.windows[self.active_window.unwrap()].is_focused = false;
+        }
         self.active_window = Some(window_num);
         let window = &self.windows[self.active_window.unwrap()];
 
@@ -260,5 +297,156 @@ impl Desktop<'a> {
                 color_code: ColorCode::new(FgColor::White, BgColor::Black),
             }
         }
+
+        self.windows[self.active_window.unwrap()].is_focused = true;
     }
+
+    pub fn change_focus(&mut self, direction: Direction) {
+        let window = self.find_window_in_direction(direction);
+        self.active_window = Some(window);
+        self.focus(window);
+    }
+
+    fn find_window_in_direction(&self, direction: Direction) -> usize {
+        if self.active_window.is_none() {
+            return 0;
+        }
+
+        let active_window_num = self.active_window.unwrap();
+        let active_window = &self.windows[active_window_num];
+
+        let mut candidates: Vec<(usize, f32)> = Vec::new();
+
+        for (i, window) in self.windows.iter().enumerate() {
+            if i == active_window_num {
+                continue;
+            }
+
+            match direction.clone() {
+                Direction::Up => {
+                    if window.y_pos > active_window.y_pos {
+                        continue;
+                    }
+                }
+
+                Direction::Down => {
+                    if window.y_pos < active_window.y_pos {
+                        continue;
+                    }
+                }
+
+                Direction::Left => {
+                    if window.x_pos > active_window.x_pos {
+                        continue;
+                    }
+                }
+
+                Direction::Right => {
+                    if window.x_pos < active_window.x_pos {
+                        continue;
+                    }
+                }
+            }
+
+            candidates.push((
+                i,
+                ((window.x_pos - active_window.x_pos).pow(2) as f32
+                    + (window.y_pos - active_window.y_pos).pow(2) as f32)
+                    .sqrt(),
+            ))
+        }
+
+        if candidates.is_empty() {
+            (active_window_num + 1) % self.windows.len()
+        } else {
+            candidates.sort_by(|(_, dist), (_, dist_2)| dist.partial_cmp(dist_2).unwrap());
+            candidates[0].0
+        }
+    }
+
+    pub fn set_title(&mut self, window: usize, title: &str) {
+        self.windows[window].name = title.to_string();
+    }
+
+    pub fn move_window(&mut self, window: usize, x: usize, y: usize) {
+        self.windows[window].move_to(x, y);
+    }
+
+    pub fn get_window_position(&self, window: usize) -> Position {
+        Position {
+            x: self.windows[window].x_pos,
+            y: self.windows[window].y_pos,
+        }
+    }
+
+    pub fn redraw(&mut self) {
+        let mut buffer = gradient_wallpaper();
+
+        buffer[0] = [ScreenChar {
+            ascii_character: b' ',
+            color_code: ColorCode::new(FgColor::White, BgColor::Black),
+        }; WIDTH];
+
+        self.buffer = buffer;
+
+        self.focus(self.active_window.unwrap());
+
+        for i in 0..self.windows.len() {
+            if i == self.active_window.unwrap() {
+                continue;
+            }
+            self.windows[i].is_focused = false;
+            self.windows[i].redraw_frame();
+            self.update_window(i);
+        }
+
+        self.windows[self.active_window.unwrap()].redraw_frame();
+        self.update_window(self.active_window.unwrap());
+    }
+
+    pub fn budge_window(&mut self, window: usize, axis: Axis, amount: isize) {
+        let windowpos = self.get_window_position(window.clone());
+
+        match axis {
+            Axis::X => {
+                if windowpos.x as isize + amount < 0 {
+                    return;
+                }
+                self.move_window(
+                    window,
+                    (windowpos.x as isize + amount) as usize,
+                    windowpos.y,
+                );
+            }
+
+            Axis::Y => {
+                if windowpos.y as isize + amount < 0 {
+                    return;
+                }
+                self.move_window(
+                    window,
+                    windowpos.x,
+                    (windowpos.y as isize + amount) as usize,
+                );
+            }
+        }
+    }
+}
+
+pub struct Position {
+    pub x: usize,
+    pub y: usize,
+}
+
+#[derive(Clone)]
+pub enum Direction {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+pub enum Axis {
+    X,
+    Y,
 }

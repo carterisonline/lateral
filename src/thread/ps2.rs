@@ -1,4 +1,5 @@
 use crate::cpu::interrupt::set_irq_handler;
+use crate::io::keybindings::handle_input;
 use crate::io::logging::kernel_warning;
 use crossbeam_queue::ArrayQueue;
 use pc_keyboard::{
@@ -41,8 +42,14 @@ fn add_scancode() {
     if let Err(_) = SCANCODE_QUEUE.push(scancode) {
         kernel_warning("Scancode queue full; dropping keyboard input");
     }
+
+    let decoded = decode_scancode(&mut *KEYBOARD.lock(), scancode);
+    if let Some(decoded_ok) = decoded {
+        handle_input(decoded_ok);
+    }
 }
 
+#[derive(Debug)]
 pub enum OsChar {
     Display(char),
     Special(KeyCode),

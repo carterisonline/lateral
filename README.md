@@ -1,9 +1,7 @@
-```
-88        db    888888 888888 88""Yb    db    88
-88       dPYb     88   88__   88__dP   dPYb   88
-88  .o  dP__Yb -- 88 - 88"" - 88"Yb - dP__Yb  88  .o
-88ood8 dP""""Yb   88   888888 88  Yb dP""""Yb 88ood8
-```
+[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/carterisonline/lateral.svg)](http://isitmaintained.com/project/carterisonline/lateral "Average time to resolve an issue")
+[![Percentage of issues still open](http://isitmaintained.com/badge/open/carterisonline/lateral.svg)](http://isitmaintained.com/project/carterisonline/lateral "Percentage of issues still open")
+
+<div style="text-align:center"><img src="img/product.png" /></div>
 
 ---
 

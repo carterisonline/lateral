@@ -1,10 +1,11 @@
 [package]
 edition = "2018"
 name = "lateral"
-version = "0.2.1"
+version = "0.2.2"
 
 [dependencies]
 linked_list_allocator = "0.9.0"
+micromath = "2.0.0"
 pc-keyboard = "0.5.0"
 pic8259 = "0.10.1"
 spin = "0.9.1"

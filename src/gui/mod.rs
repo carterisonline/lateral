@@ -1,11 +1,14 @@
 pub mod lgtk;
 pub mod wm;
 
+use lazy_static::lazy_static;
+use rust_alloc::format;
 use rust_alloc::string::String;
+use spin::RwLock;
 
 use crate::gui::wm::{Desktop, Window};
 use crate::thread::yield_thread;
-use crate::time::rtc::nanowait;
+use crate::time::rtc::{nanowait, ticks};
 
 use self::lgtk::widgets::header::Header;
 
@@ -22,6 +25,10 @@ macro_rules! window {
     ($widget: ident ($contents: expr), height: $widget_height: literal, $id: ident) => {
         $id.push_widget($widget::from($contents), $widget_height);
     };
+}
+
+lazy_static! {
+    pub static ref DESKTOP: RwLock<Desktop<'static>> = RwLock::new(Desktop::new());
 }
 
 pub fn terminal() {
@@ -53,7 +60,7 @@ pub fn terminal() {
         String ("Hello :)"), height: 1
     );
 
-    let mut desktop = Desktop::new();
+    let mut desktop = DESKTOP.write();
     desktop.push_window(greeting_window); // Adds the window to the desktop, and returns the window number.
     desktop.push_window(test_window);
     desktop.push_window(attention);
@@ -61,10 +68,18 @@ pub fn terminal() {
     desktop.update_window(1);
     desktop.update_window(2);
 
+    core::mem::drop(desktop);
+
     loop {
-        nanowait(16_667);
+        let mut desktop = DESKTOP.write();
+
+        //desktop.set_title(2, format!("{:?}", ticks()).as_str());
+        //desktop.focus(2);
+        desktop.redraw();
         desktop.display();
+        core::mem::drop(desktop);
         yield_thread();
+        nanowait(16_667);
     }
 
     /*

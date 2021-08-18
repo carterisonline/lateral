@@ -8,11 +8,11 @@ use crate::io::vga_buffer::{BgColor, ColorCode, FgColor, ScreenChar};
 use super::Widget;
 
 impl Widget for String {
-    fn to_buffer(&self, container_size: Size) -> Vec<Vec<ScreenChar>> {
+    fn to_buffer(&self, container_size: Size, bgcolor: BgColor) -> Vec<Vec<ScreenChar>> {
         let mut output: Vec<Vec<ScreenChar>> = Vec::fill(
             ScreenChar {
                 ascii_character: b' ',
-                color_code: ColorCode::new(FgColor::Black, BgColor::LightGray),
+                color_code: ColorCode::new(FgColor::Black, bgcolor),
             },
             container_size,
         );
@@ -33,7 +33,7 @@ impl Widget for String {
             for c in word.chars() {
                 output[y_pos][x_pos] = ScreenChar {
                     ascii_character: c as u8,
-                    color_code: ColorCode::new(FgColor::Black, BgColor::LightGray),
+                    color_code: ColorCode::new(FgColor::Black, bgcolor),
                 };
 
                 x_pos += 1;
@@ -41,7 +41,7 @@ impl Widget for String {
 
             output[y_pos][x_pos] = ScreenChar {
                 ascii_character: b' ',
-                color_code: ColorCode::new(FgColor::Black, BgColor::LightGray),
+                color_code: ColorCode::new(FgColor::Black, bgcolor),
             };
 
             x_pos += 1;
