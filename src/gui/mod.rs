@@ -2,13 +2,12 @@ pub mod lgtk;
 pub mod wm;
 
 use lazy_static::lazy_static;
-use rust_alloc::format;
 use rust_alloc::string::String;
 use spin::RwLock;
 
 use crate::gui::wm::{Desktop, Window};
+use crate::syscall::service::sleep;
 use crate::thread::yield_thread;
-use crate::time::rtc::{nanowait, ticks};
 
 use self::lgtk::widgets::header::Header;
 
@@ -72,14 +71,11 @@ pub fn terminal() {
 
     loop {
         let mut desktop = DESKTOP.write();
-
-        //desktop.set_title(2, format!("{:?}", ticks()).as_str());
-        //desktop.focus(2);
         desktop.redraw();
         desktop.display();
         core::mem::drop(desktop);
         yield_thread();
-        nanowait(16_667);
+        sleep(0.016667);
     }
 
     /*
