@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 pub fn sleep(seconds: f64) {
     unsafe { asm!("sti") }; // Restore interrupts
     crate::time::rtc::sleep(seconds);

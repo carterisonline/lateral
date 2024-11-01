@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 pub mod service;
 
 pub const SLEEP: usize = 0;

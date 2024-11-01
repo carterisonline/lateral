@@ -11,6 +11,8 @@ use x86_64::instructions::port::Port;
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
+use core::arch::naked_asm;
+
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
@@ -47,8 +49,12 @@ lazy_static! {
         idt[interrupt_index(13) as usize].set_handler_fn(irq13_handler);
         idt[interrupt_index(14) as usize].set_handler_fn(irq14_handler);
         idt[interrupt_index(15) as usize].set_handler_fn(irq15_handler);
-        idt[0x80]
-            .set_handler_fn(unsafe { core::mem::transmute(wrapped_syscall_handler as *mut fn()) });
+        idt[0x80].set_handler_fn(unsafe {
+            core::mem::transmute::<
+                *mut fn(),
+                extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+            >(wrapped_syscall_handler as *mut fn())
+        });
         idt.page_fault.set_handler_fn(page_fault_handler);
 
         idt
@@ -72,8 +78,10 @@ macro_rules! irq_handler {
 macro_rules! wrap {
     ($fn: ident => $w:ident) => {
         #[naked]
+        /// # Safety
+        /// lmao
         pub unsafe extern "sysv64" fn $w() {
-            asm!(
+            naked_asm!(
                 "
                 push rbp
                 push rax
@@ -112,7 +120,6 @@ macro_rules! wrap {
                 iretq
                 ",
                 sym $fn,
-                options(noreturn)
             );
         }
     };

@@ -12,9 +12,12 @@ use lazy_static::lazy_static;
 use x86_64::instructions::port::Port;
 
 lazy_static! {
-    pub static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> = Mutex::new(
-        Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore)
-    );
+    pub static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
+        Mutex::new(Keyboard::new(
+            ScancodeSet1::new(),
+            layouts::Us104Key,
+            HandleControl::Ignore
+        ));
 }
 
 lazy_static! {
@@ -39,7 +42,7 @@ fn read_scancode() -> u8 {
 fn add_scancode() {
     let scancode = read_scancode();
 
-    if let Err(_) = SCANCODE_QUEUE.push(scancode) {
+    if SCANCODE_QUEUE.push(scancode).is_err() {
         kernel_warning("Scancode queue full; dropping keyboard input");
     }
 
@@ -62,13 +65,13 @@ pub fn decode_scancode<T: KeyboardLayout, U: ScancodeSet>(
     if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
-                DecodedKey::Unicode(character) => return Some(OsChar::Display(character)),
-                DecodedKey::RawKey(thing) => return Some(OsChar::Special(thing)),
+                DecodedKey::Unicode(character) => Some(OsChar::Display(character)),
+                DecodedKey::RawKey(thing) => Some(OsChar::Special(thing)),
             }
         } else {
-            return None;
+            None
         }
     } else {
-        return None;
+        None
     }
 }

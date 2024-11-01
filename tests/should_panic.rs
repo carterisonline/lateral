@@ -7,7 +7,9 @@ fn main(_: &'static bootloader::BootInfo) -> ! {
     lateral::init();
     lateral::test::run_should_panic(&tests::basic);
     lateral::test::run(&tests::test_breakpoint_exception);
-    loop {}
+    loop {
+        core::hint::spin_loop();
+    }
 }
 
 // Panic handler.

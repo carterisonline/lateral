@@ -37,22 +37,22 @@ pub fn handle_input(scancode: OsChar) {
             }
             OsChar::Display('W') => {
                 let mut desktop = DESKTOP.write();
-                let current_window = desktop.active_window.clone().unwrap();
+                let current_window = desktop.active_window.unwrap();
                 desktop.budge_window(current_window, Axis::Y, -1);
             }
             OsChar::Display('S') => {
                 let mut desktop = DESKTOP.write();
-                let current_window = desktop.active_window.clone().unwrap();
+                let current_window = desktop.active_window.unwrap();
                 desktop.budge_window(current_window, Axis::Y, 1);
             }
             OsChar::Display('A') => {
                 let mut desktop = DESKTOP.write();
-                let current_window = desktop.active_window.clone().unwrap();
+                let current_window = desktop.active_window.unwrap();
                 desktop.budge_window(current_window, Axis::X, -1);
             }
             OsChar::Display('D') => {
                 let mut desktop = DESKTOP.write();
-                let current_window = desktop.active_window.clone().unwrap();
+                let current_window = desktop.active_window.unwrap();
                 desktop.budge_window(current_window, Axis::X, 1);
             }
             _ => println!("Unhandled: {:?}", scancode),

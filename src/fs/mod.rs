@@ -31,17 +31,23 @@ macro_rules! write_unit_filesystem {
 }
 
 pub struct Filesystem {
-    index: [u8; const { FS_MAX_SIZE * (1 / 8) }],
-    fs: [u8; const { FS_MAX_SIZE * (7 / 8) }],
+    index: [u8; FS_MAX_SIZE / 8],
+    fs: [u8; (FS_MAX_SIZE * 7) / 8],
     heading: usize,
     ptr: usize,
+}
+
+impl Default for Filesystem {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Filesystem {
     pub fn new() -> Self {
         Self {
-            index: [0; const { FS_MAX_SIZE * (1 / 8) }],
-            fs: [0; const { FS_MAX_SIZE * (7 / 8) }],
+            index: [0; FS_MAX_SIZE / 8],
+            fs: [0; (FS_MAX_SIZE * 7) / 8],
             heading: 0,
             ptr: 0,
         }

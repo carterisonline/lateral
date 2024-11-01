@@ -4,7 +4,6 @@ use rust_alloc::string::{String, ToString};
 use rust_alloc::vec::Vec;
 
 use crate::io::vga_buffer::{BgColor, ColorCode, FgColor, ScreenChar, HEIGHT, WIDTH, WRITER};
-use crate::println;
 
 use super::lgtk::widgets::Widget;
 use super::lgtk::Size;
@@ -25,8 +24,8 @@ fn gradient_wallpaper() -> VGABuffer {
         }; WIDTH];
     }
 
-    for i in (START_BAR + 3)..HEIGHT {
-        buffer[i as usize] = [ScreenChar {
+    for c in &mut buffer[(START_BAR + 3)..HEIGHT] {
+        *c = [ScreenChar {
             ascii_character: 219,
             color_code: ColorCode::new(FgColor::LightBlue, DESKTOP_BG),
         }; WIDTH];
@@ -74,7 +73,7 @@ struct SizedWidget<'a> {
     y_pos: usize,
 }
 
-impl SizedWidget<'a> {
+impl<'a> SizedWidget<'a> {
     fn new(widget: Box<dyn Widget + 'a>, width: usize, height: usize, y_pos: usize) -> Self {
         Self {
             widget,
@@ -96,7 +95,7 @@ pub struct Window<'a> {
     is_focused: bool,
 }
 
-impl Window<'a> {
+impl<'a> Window<'a> {
     pub fn new(name: &str, width: usize, height: usize) -> Self {
         Self {
             // is this functional programming?   :O
@@ -128,7 +127,7 @@ impl Window<'a> {
     {
         let padding = widget.get_padding().height;
         self.widgets.push(SizedWidget::new(
-            box widget,
+            Box::new(widget),
             self.width,
             height + padding * 2,
             self.widget_height,
@@ -180,21 +179,31 @@ impl Window<'a> {
             self.draw_widget(i);
         }
 
-        for y in self.y_pos..=(self.y_pos + self.height) {
+        for (y, row) in vga_buffer
+            .iter_mut()
+            .enumerate()
+            .skip(self.y_pos)
+            .take(self.height + 1)
+        {
             if y >= HEIGHT {
                 break;
             } else if y == 0 {
                 continue;
             }
 
-            for x in self.x_pos..=(self.x_pos + self.width) {
+            for (x, col) in row
+                .iter_mut()
+                .enumerate()
+                .skip(self.x_pos)
+                .take(self.width + 1)
+            {
                 if x >= WIDTH {
                     break;
                 }
 
                 let target = self.contents[y - self.y_pos][x - self.x_pos];
                 if let Some(ch) = target {
-                    vga_buffer[y][x] = ch;
+                    *col = ch;
                 }
             }
         }
@@ -222,7 +231,7 @@ impl Window<'a> {
             .enumerate()
         {
             for (x, c) in row.iter().enumerate() {
-                self.contents[y + w.y_pos + padding.height][x + padding.width] = Some(c.clone());
+                self.contents[y + w.y_pos + padding.height][x + padding.width] = Some(*c);
             }
         }
     }
@@ -244,7 +253,13 @@ pub struct Desktop<'a> {
     pub active_window: Option<usize>,
 }
 
-impl Desktop<'a> {
+impl Default for Desktop<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> Desktop<'a> {
     pub fn new() -> Desktop<'a> {
         let mut buffer = gradient_wallpaper();
 
@@ -350,8 +365,8 @@ impl Desktop<'a> {
 
             candidates.push((
                 i,
-                ((window.x_pos - active_window.x_pos).pow(2) as f32
-                    + (window.y_pos - active_window.y_pos).pow(2) as f32)
+                ((window.x_pos.saturating_sub(active_window.x_pos)).pow(2) as f32
+                    + (window.y_pos.saturating_sub(active_window.y_pos)).pow(2) as f32)
                     .sqrt(),
             ))
         }
@@ -405,7 +420,7 @@ impl Desktop<'a> {
     }
 
     pub fn budge_window(&mut self, window: usize, axis: Axis, amount: isize) {
-        let windowpos = self.get_window_position(window.clone());
+        let windowpos = self.get_window_position(window);
 
         match axis {
             Axis::X => {

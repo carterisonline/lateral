@@ -34,7 +34,7 @@ impl fmt::Write for StartsWith<'_> {
         let n = cmp::min(self.len(), s.len());
         self.take(n)
             .eq(s.bytes().take(n))
-            .then(|| ())
+            .then_some(())
             .ok_or(fmt::Error)
     }
 }

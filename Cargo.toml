@@ -1,21 +1,21 @@
 [package]
-edition = "2018"
+edition = "2021"
 name = "lateral"
 version = "0.2.2"
 
 [dependencies]
 linked_list_allocator = "0.9.0"
 micromath = "2.0.0"
-pc-keyboard = "0.5.0"
+pc-keyboard = "0.7.0"
 pic8259 = "0.10.1"
 spin = "0.9.1"
-uart_16550 = "0.2"
-x86_64 = "0.14"
+uart_16550 = "0.2.0"
+x86_64 = "0.14.2"
 
 [dependencies.logos]
 default-features = false
 features = ["export_derive"]
-version = "0.12"
+version = "0.12.0"
 
 [dependencies.lazy_static]
 features = ["spin_no_std"]
@@ -28,16 +28,16 @@ version = "0.9.8"
 [dependencies.crossbeam-queue]
 default-features = false
 features = ["alloc"]
-version = "0.2"
+version = "0.3.11"
 
 [dependencies.conquer-once]
 default-features = false
-version = "0.3"
+version = "0.2.0"
 
 [dependencies.futures-util]
 default-features = false
 features = ["alloc"]
-version = "0.3"
+version = "0.3.4"
 
 [package.metadata.bootimage]
 test-args = [
@@ -48,7 +48,7 @@ test-args = [
   "-display",
   "none",
 ]
-test-success-exit-code = 5
+test-success-exit-code = 33
 
 [[test]]
 harness = false

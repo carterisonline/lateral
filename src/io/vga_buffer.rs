@@ -161,10 +161,10 @@ impl Writer {
         for i in 0..text.len() {
             self.buffer.chars[row][col + i] = ScreenChar {
                 ascii_character: text.chars().nth(i).unwrap() as u8,
-                color_code: if fgcolor.is_none() || bgcolor.is_none() {
-                    self.color_code
+                color_code: if let (Some(fgcolor), Some(bgcolor)) = (fgcolor, bgcolor) {
+                    ColorCode::new(fgcolor, bgcolor)
                 } else {
-                    ColorCode::new(fgcolor.unwrap(), bgcolor.unwrap())
+                    self.color_code
                 },
             }
         }

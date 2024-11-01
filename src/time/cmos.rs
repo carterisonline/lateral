@@ -26,6 +26,12 @@ pub struct CMOS {
     data: Port<u8>,
 }
 
+impl Default for CMOS {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CMOS {
     pub fn new() -> Self {
         CMOS {
@@ -123,8 +129,8 @@ impl CMOS {
 
     fn is_updating(&mut self) -> bool {
         unsafe {
-            self.addr.write(0x0A as u8);
-            (self.data.read() & 0x80 as u8) == 1
+            self.addr.write(0x0A_u8);
+            (self.data.read() & 0x80_u8) != 0
         }
     }
 

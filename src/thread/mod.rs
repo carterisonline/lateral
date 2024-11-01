@@ -1,6 +1,7 @@
 pub mod ps2;
 pub mod queue;
 
+use core::arch::{asm, naked_asm};
 use core::ptr;
 
 use rust_alloc::vec::Vec;
@@ -35,21 +36,14 @@ enum State {
 
 #[derive(Clone)]
 struct Thread {
-    id: usize,
     stack: [u8; STACK_SIZE],
     ctx: ThreadContext,
     state: State,
 }
 
-pub struct Runtime {
-    threads: Vec<Thread>,
-    current: usize,
-}
-
 impl Thread {
-    fn new(id: usize) -> Self {
+    fn new() -> Self {
         Thread {
-            id,
             stack: [0_u8; STACK_SIZE],
             ctx: ThreadContext::default(),
             state: State::Available,
@@ -57,17 +51,27 @@ impl Thread {
     }
 }
 
+pub struct Runtime {
+    threads: Vec<Thread>,
+    current: usize,
+}
+
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Runtime {
     pub fn new() -> Self {
         let base_thread = Thread {
-            id: 0,
             stack: [0_u8; STACK_SIZE],
             ctx: ThreadContext::default(),
             state: State::Running,
         };
 
         let mut threads = [base_thread].to_vec();
-        let mut available_threads: Vec<Thread> = (1..MAX_THREADS).map(|i| Thread::new(i)).collect();
+        let mut available_threads: Vec<Thread> = (1..MAX_THREADS).map(|_| Thread::new()).collect();
         threads.append(&mut available_threads);
 
         Runtime {
@@ -86,7 +90,9 @@ impl Runtime {
     pub fn run(&mut self) -> ! {
         while self.t_yield() {}
         kernel_event("All threads have exited.");
-        loop {}
+        loop {
+            core::hint::spin_loop();
+        }
     }
 
     fn t_return(&mut self) {
@@ -120,21 +126,26 @@ impl Runtime {
             unsafe {
                 let old: *mut ThreadContext = &mut self.threads[old_pos].ctx;
                 let new: *const ThreadContext = &self.threads[pos].ctx;
-                llvm_asm!(
-                    "mov $0, %rdi
-                     mov $1, %rsi"::"r"(old), "r"(new)
+                asm!(
+                    "mov {old}, %rdi",
+                    "mov {new}, %rsi",
+                    old = in(reg) old,
+                    new = in(reg) new,
+                    // "r"(old), "r"(new)
+                    options(att_syntax)
                 );
                 switch();
             }
 
             unsafe {
+                #[allow(static_mut_refs)]
                 for i in 0..THREAD_QUEUE.len() {
                     self.spawn(THREAD_QUEUE.contents[i]);
                 }
                 THREAD_QUEUE = ThreadQueue::new();
             }
 
-            self.threads.len() > 0
+            !self.threads.is_empty()
         })
     }
 
@@ -147,11 +158,11 @@ impl Runtime {
 
         let size = available.stack.len();
         unsafe {
-            let s_ptr = available.stack.as_mut_ptr().offset(size as isize);
+            let s_ptr = available.stack.as_mut_ptr().add(size);
             let s_ptr = (s_ptr as usize & !15) as *mut u8;
-            ptr::write(s_ptr.offset(-16) as *mut u64, guard as u64);
-            ptr::write(s_ptr.offset(-24) as *mut u64, skip as u64);
-            ptr::write(s_ptr.offset(-32) as *mut u64, f as u64);
+            ptr::write(s_ptr.offset(-16) as *mut usize, guard as usize);
+            ptr::write(s_ptr.offset(-24) as *mut usize, skip as usize);
+            ptr::write(s_ptr.offset(-32) as *mut usize, f as usize);
             available.ctx.rsp = s_ptr.offset(-32) as u64;
         }
         available.state = State::Ready;
@@ -159,7 +170,11 @@ impl Runtime {
 }
 
 #[naked]
-fn skip() {}
+fn skip() {
+    unsafe {
+        naked_asm!("");
+    }
+}
 
 fn guard() {
     unsafe {
@@ -178,25 +193,23 @@ pub fn yield_thread() {
 //*  Replace with `asm!` or else
 
 #[naked]
-#[inline(never)]
 unsafe fn switch() {
-    llvm_asm!(
-        "
-        mov     %rsp, 0x00(%rdi)
-        mov     %r15, 0x08(%rdi)
-        mov     %r14, 0x10(%rdi)
-        mov     %r13, 0x18(%rdi)
-        mov     %r12, 0x20(%rdi)
-        mov     %rbx, 0x28(%rdi)
-        mov     %rbp, 0x30(%rdi)
-
-        mov     0x00(%rsi), %rsp
-        mov     0x08(%rsi), %r15
-        mov     0x10(%rsi), %r14
-        mov     0x18(%rsi), %r13
-        mov     0x20(%rsi), %r12
-        mov     0x28(%rsi), %rbx
-        mov     0x30(%rsi), %rbp
-        "
+    naked_asm!(
+        "mov     %rsp, 0x00(%rdi)",
+        "mov     %r15, 0x08(%rdi)",
+        "mov     %r14, 0x10(%rdi)",
+        "mov     %r13, 0x18(%rdi)",
+        "mov     %r12, 0x20(%rdi)",
+        "mov     %rbx, 0x28(%rdi)",
+        "mov     %rbp, 0x30(%rdi)",
+        "mov     0x00(%rsi), %rsp",
+        "mov     0x08(%rsi), %r15",
+        "mov     0x10(%rsi), %r14",
+        "mov     0x18(%rsi), %r13",
+        "mov     0x20(%rsi), %r12",
+        "mov     0x28(%rsi), %rbx",
+        "mov     0x30(%rsi), %rbp",
+        "ret",
+        options(att_syntax)
     );
 }

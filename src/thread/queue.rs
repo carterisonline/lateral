@@ -4,6 +4,12 @@ pub struct ThreadQueue {
     pub contents: Vec<fn()>,
 }
 
+impl Default for ThreadQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ThreadQueue {
     pub const fn new() -> ThreadQueue {
         ThreadQueue {
